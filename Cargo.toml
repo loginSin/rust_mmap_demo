@@ -6,9 +6,8 @@ edition = "2021"
 [dependencies]
 memmap2 = "0.9.5"
 chrono = "0.4.38"
-anyhow = "1.0.98"
-rand = "0.9.1"     # 错误处理
+rand = "0.9.1"
 md5 = "0.7.0"
 aes = "0.7.5"
 block-modes = "0.8.1"
-regex = "1.11.1"
+hex = "0.4.3"
