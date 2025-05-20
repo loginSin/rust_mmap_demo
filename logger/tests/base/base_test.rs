@@ -1,3 +1,4 @@
+use logger::mmap_config::MmapConfig;
 use logger::mmap_writer::MmapWriter;
 use std::cell::RefCell;
 use std::fs::remove_dir_all;
@@ -11,7 +12,8 @@ pub struct BaseTest {
 impl BaseTest {
     pub fn new(app_key: &str, base_dir: PathBuf, is_encrypt: bool, clean: bool) -> Self {
         Self::clean_old_file(base_dir.clone(), clean);
-        let mmap_writer = MmapWriter::new(app_key, base_dir, is_encrypt);
+        let config = MmapConfig::new(app_key, is_encrypt);
+        let mmap_writer = MmapWriter::new(&base_dir, config);
         Self {
             mmap_writer: Arc::new(RefCell::new(mmap_writer)),
         }

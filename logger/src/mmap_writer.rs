@@ -1,3 +1,4 @@
+use crate::mmap_config::MmapConfig;
 use aes::Aes128;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Ecb};
@@ -44,9 +45,8 @@ pub fn decrypt_line(
 }
 
 pub struct MmapWriter {
-    app_key: String,
     base_dir: PathBuf,
-    is_encrypt: bool,
+    config: MmapConfig,
     current_mmap: Option<MmapMut>, // 缓存当前 mmap
     current_file: Option<PathBuf>, // 当前日志文件路径
     buffer: Vec<u8>,               // 写入缓冲区
@@ -59,14 +59,13 @@ const BUFFER_SIZE: usize = 128 * 1024; // 128 KB , 每次扩展的 buffer 大小
 const FLUSH_SIZE_THRESHOLD: usize = 16 * 1024; // KB
 const FLUSH_TIME_THRESHOLD: u64 = 5; // seconds
 
-const CHUNK_SIZE: usize = 64 * 1024; // 64KB
+const CHUNK_SIZE: usize = 64 * 1024; // 64KB // todo 优化
 
 impl MmapWriter {
-    pub fn new(app_key: &str, base_dir: PathBuf, is_encrypt: bool) -> Self {
+    pub fn new(base_dir: &PathBuf, config: MmapConfig) -> Self {
         Self {
-            app_key: app_key.to_string(),
-            base_dir,
-            is_encrypt,
+            base_dir: base_dir.clone(),
+            config,
             current_mmap: None,
             current_file: None,
             buffer: Vec::with_capacity(BUFFER_SIZE), // 缓冲区
@@ -78,9 +77,9 @@ impl MmapWriter {
 
     // 写入日志
     pub fn write(&mut self, message: &str) -> io::Result<()> {
-        let msg = if self.is_encrypt {
+        let msg = if self.config.is_encrypt() {
             let encrypt_msg =
-                encrypt_line(self.app_key.as_str(), message).unwrap_or(message.to_string());
+                encrypt_line(self.config.get_app_key(), message).unwrap_or(message.to_string());
             format!("{}\n", encrypt_msg)
         } else {
             format!("{}\n", message)
@@ -146,7 +145,11 @@ impl MmapWriter {
         let d = current.day();
         let h = current.hour();
         let dir = self.base_dir.join(format!("{:04}{:02}{:02}", y, m, d));
-        let encrypt_str = if self.is_encrypt { "encrypt" } else { "plain" };
+        let encrypt_str = if self.config.is_encrypt() {
+            "encrypt"
+        } else {
+            "plain"
+        };
         let filename = format!("{:04}{:02}{:02}_{:02}_{}.log", y, m, d, h, encrypt_str);
         let filepath = dir.join(&filename);
         if !filepath.exists() {
@@ -163,9 +166,10 @@ impl MmapWriter {
             if bytes.is_empty() {
                 continue;
             }
-            let msg = if self.is_encrypt {
+            let msg = if self.config.is_encrypt() {
                 let encrypted_text = String::from_utf8(bytes.to_vec()).unwrap_or("".to_string());
-                decrypt_line(&self.app_key, encrypted_text.as_str()).unwrap_or("".to_string())
+                decrypt_line(self.config.get_app_key(), encrypted_text.as_str())
+                    .unwrap_or("".to_string())
             } else {
                 String::from_utf8(bytes.to_vec()).unwrap_or("".to_string())
             };
@@ -307,7 +311,11 @@ impl MmapWriter {
         let (year, month, day, hour) = self.current_time();
         let dir = self.ensure_directory(year, month, day)?;
 
-        let encrypt_str = if self.is_encrypt { "encrypt" } else { "plain" };
+        let encrypt_str = if self.config.is_encrypt() {
+            "encrypt"
+        } else {
+            "plain"
+        };
 
         Ok(dir.join(format!(
             "{:04}{:02}{:02}_{:02}_{}.log",
