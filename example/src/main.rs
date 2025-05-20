@@ -1,5 +1,5 @@
 use chrono::{FixedOffset, NaiveDateTime, TimeZone};
-use logger::logger::Logger;
+use logger::mmap_writer::MmapWriter;
 use rand::seq::IndexedRandom;
 use std::fs::remove_dir_all;
 use std::path::PathBuf;
@@ -29,11 +29,11 @@ fn export_encrypt_log() {
 
     let app_key = "testAppKey";
     let is_encrypt = true;
-    let mut encrypt_logger = Logger::new(app_key, "./target/tmp_log/", is_encrypt);
+    let mut encrypt_writer = MmapWriter::new(app_key, "./target/tmp_log/", is_encrypt);
     // 添加计时开始点
     let start = Instant::now();
     let output = PathBuf::from("./target/tmp_log/encrypt_log.log");
-    let _ = encrypt_logger.export_logs(start_ts, end_ts, &output);
+    let _ = encrypt_writer.export_logs(start_ts, end_ts, &output);
     // 获取 总耗时
     let duration = start.elapsed();
     println!(
@@ -49,11 +49,11 @@ fn export_log() {
 
     let app_key = "testAppKey";
     let is_encrypt = false;
-    let mut encrypt_logger = Logger::new(app_key, "./target/tmp_log/", false);
+    let mut encrypt_writer = MmapWriter::new(app_key, "./target/tmp_log/", false);
     // 添加计时开始点
     let start = Instant::now();
     let output = PathBuf::from("./target/tmp_log/plain_log.log");
-    let _ = encrypt_logger.export_logs(start_ts, end_ts, &output);
+    let _ = encrypt_writer.export_logs(start_ts, end_ts, &output);
     // 获取总耗时
     let duration = start.elapsed();
     println!(
@@ -65,14 +65,14 @@ fn export_log() {
 
 fn write_all_log(count: i32, length: i32) {
     let app_key = "testAppKey";
-    let mut logger = Logger::new(app_key, "./target/tmp_log/", false);
-    let mut encrypt_logger = Logger::new(app_key, "./target/tmp_log/", true);
+    let mut writer = MmapWriter::new(app_key, "./target/tmp_log/", false);
+    let mut encrypt_writer = MmapWriter::new(app_key, "./target/tmp_log/", true);
     // 添加计时开始点
     let start = Instant::now();
     for _ in 0..1 * count {
         let text = string_by_length(length);
-        let _ = logger.log(text.as_str());
-        let _ = encrypt_logger.log(text.as_str());
+        let _ = writer.log(text.as_str());
+        let _ = encrypt_writer.log(text.as_str());
     }
     // 获取总耗时
     let duration = start.elapsed();
@@ -83,11 +83,11 @@ fn write_all_log(count: i32, length: i32) {
 fn write_encrypt_log(count: i32, length: i32) {
     let app_key = "testAppKey";
     let is_encrypt = true;
-    let mut logger = Logger::new(app_key, "./target/tmp_log/", true);
+    let mut writer = MmapWriter::new(app_key, "./target/tmp_log/", true);
     // 添加计时开始点
     let start = Instant::now();
     for _ in 0..1 * count {
-        let _ = logger.log(string_by_length(length).as_str());
+        let _ = writer.log(string_by_length(length).as_str());
     }
     // 获取总耗时
     let duration = start.elapsed();
@@ -102,11 +102,11 @@ fn write_encrypt_log(count: i32, length: i32) {
 fn write_log(count: i32, length: i32) {
     let app_key = "testAppKey";
     let is_encrypt = false;
-    let mut logger = Logger::new(app_key, "./target/tmp_log/", is_encrypt);
+    let mut writer = MmapWriter::new(app_key, "./target/tmp_log/", is_encrypt);
     // 添加计时开始点
     let start = Instant::now();
     for _ in 0..1 * count {
-        let _ = logger.log(string_by_length(length).as_str());
+        let _ = writer.log(string_by_length(length).as_str());
     }
     // 计算总耗时
     let duration = start.elapsed();
@@ -121,7 +121,7 @@ fn string_by_length(length: i32) -> String {
     let chars: Vec<char> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         .chars()
         .collect();
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let random_string = (0..length)
         .map(|_| *chars.choose(&mut rng).unwrap())
         .collect::<String>();

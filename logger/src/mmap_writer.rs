@@ -43,7 +43,7 @@ pub fn decrypt_line(
     Ok(String::from_utf8(decrypted)?)
 }
 
-pub struct Logger {
+pub struct MmapWriter {
     app_key: String,
     base_dir: PathBuf,
     is_encrypt: bool,
@@ -59,7 +59,7 @@ const BUFFER_SIZE: usize = 128 * 1024; // 128 KB , 每次扩展的 buffer 大小
 const FLUSH_SIZE_THRESHOLD: usize = 16 * 1024; // KB
 const FLUSH_TIME_THRESHOLD: u64 = 5; // seconds
 
-impl Logger {
+impl MmapWriter {
     pub fn new<P: AsRef<Path>>(app_key: &str, base_dir: P, is_encrypt: bool) -> Self {
         Self {
             app_key: app_key.to_string(),
@@ -159,7 +159,7 @@ impl Logger {
     }
 }
 
-impl Logger {
+impl MmapWriter {
     // 初始化 mmap 映射
     fn init_mmap(&mut self, path: &Path) -> io::Result<()> {
         // 创建或打开文件
@@ -215,7 +215,7 @@ impl Logger {
     }
 }
 
-impl Logger {
+impl MmapWriter {
     // 获取当前时间的年月日小时格式
     fn current_time(&self) -> (i32, u32, u32, u32) {
         let now = Local::now().with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap());
