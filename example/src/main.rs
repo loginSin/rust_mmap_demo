@@ -29,7 +29,8 @@ fn export_encrypt_log() {
 
     let app_key = "testAppKey";
     let is_encrypt = true;
-    let mut encrypt_writer = MmapWriter::new(app_key, "./target/tmp_log/", is_encrypt);
+    let base_dir = PathBuf::from("./target/tmp_log/");
+    let mut encrypt_writer = MmapWriter::new(app_key, base_dir, is_encrypt);
     // 添加计时开始点
     let start = Instant::now();
     let output = PathBuf::from("./target/tmp_log/encrypt_log.log");
@@ -49,7 +50,8 @@ fn export_log() {
 
     let app_key = "testAppKey";
     let is_encrypt = false;
-    let mut encrypt_writer = MmapWriter::new(app_key, "./target/tmp_log/", false);
+    let base_dir = PathBuf::from("./target/tmp_log/");
+    let mut encrypt_writer = MmapWriter::new(app_key, base_dir, is_encrypt);
     // 添加计时开始点
     let start = Instant::now();
     let output = PathBuf::from("./target/tmp_log/plain_log.log");
@@ -65,14 +67,15 @@ fn export_log() {
 
 fn write_all_log(count: i32, length: i32) {
     let app_key = "testAppKey";
-    let mut writer = MmapWriter::new(app_key, "./target/tmp_log/", false);
-    let mut encrypt_writer = MmapWriter::new(app_key, "./target/tmp_log/", true);
+    let base_dir = PathBuf::from("./target/tmp_log/");
+    let mut writer = MmapWriter::new(app_key, base_dir.clone(), false);
+    let mut encrypt_writer = MmapWriter::new(app_key, base_dir, true);
     // 添加计时开始点
     let start = Instant::now();
     for _ in 0..1 * count {
         let text = string_by_length(length);
-        let _ = writer.log(text.as_str());
-        let _ = encrypt_writer.log(text.as_str());
+        let _ = writer.write(text.as_str());
+        let _ = encrypt_writer.write(text.as_str());
     }
     // 获取总耗时
     let duration = start.elapsed();
@@ -83,11 +86,12 @@ fn write_all_log(count: i32, length: i32) {
 fn write_encrypt_log(count: i32, length: i32) {
     let app_key = "testAppKey";
     let is_encrypt = true;
-    let mut writer = MmapWriter::new(app_key, "./target/tmp_log/", true);
+    let base_dir = PathBuf::from("./target/tmp_log/");
+    let mut writer = MmapWriter::new(app_key, base_dir, is_encrypt);
     // 添加计时开始点
     let start = Instant::now();
     for _ in 0..1 * count {
-        let _ = writer.log(string_by_length(length).as_str());
+        let _ = writer.write(string_by_length(length).as_str());
     }
     // 获取总耗时
     let duration = start.elapsed();
@@ -102,11 +106,12 @@ fn write_encrypt_log(count: i32, length: i32) {
 fn write_log(count: i32, length: i32) {
     let app_key = "testAppKey";
     let is_encrypt = false;
-    let mut writer = MmapWriter::new(app_key, "./target/tmp_log/", is_encrypt);
+    let base_dir = PathBuf::from("./target/tmp_log/");
+    let mut writer = MmapWriter::new(app_key, base_dir, is_encrypt);
     // 添加计时开始点
     let start = Instant::now();
     for _ in 0..1 * count {
-        let _ = writer.log(string_by_length(length).as_str());
+        let _ = writer.write(string_by_length(length).as_str());
     }
     // 计算总耗时
     let duration = start.elapsed();

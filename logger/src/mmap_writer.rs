@@ -60,10 +60,10 @@ const FLUSH_SIZE_THRESHOLD: usize = 16 * 1024; // KB
 const FLUSH_TIME_THRESHOLD: u64 = 5; // seconds
 
 impl MmapWriter {
-    pub fn new<P: AsRef<Path>>(app_key: &str, base_dir: P, is_encrypt: bool) -> Self {
+    pub fn new(app_key: &str, base_dir: PathBuf, is_encrypt: bool) -> Self {
         Self {
             app_key: app_key.to_string(),
-            base_dir: base_dir.as_ref().to_path_buf(),
+            base_dir,
             is_encrypt,
             current_mmap: None,
             current_file: None,
@@ -75,7 +75,7 @@ impl MmapWriter {
     }
 
     // 写入日志
-    pub fn log(&mut self, message: &str) -> io::Result<()> {
+    pub fn write(&mut self, message: &str) -> io::Result<()> {
         let msg = if self.is_encrypt {
             let encrypt_msg =
                 encrypt_line(self.app_key.as_str(), message).unwrap_or(message.to_string());
