@@ -255,9 +255,16 @@ impl MmapWriter {
         // 获取当前 mmap
         let mmap = self.current_mmap.as_mut().unwrap();
 
-        // let pos = Self::get_file_size(&log_path)?; todo
-        // 查找可用空间
-        let pos = mmap.iter().position(|&b| b == 0).unwrap_or(mmap.len());
+        // warning：mmap 申请空间会扩容，且全部填充 0，所以拼接数据的时候，需要找到第一 0 的位置
+
+        // 正序查找可用空间，文件越大，速度越慢
+        // let pos = mmap.iter().position(|&b| b == 0).unwrap_or(mmap.len());
+
+        // 倒序查找可用空间，速度快
+        let mut pos = mmap.len();
+        while pos > 0 && mmap[pos - 1] == 0 {
+            pos -= 1;
+        }
 
         if pos + self.buffer_size > mmap.len() {
             // 重新映射
