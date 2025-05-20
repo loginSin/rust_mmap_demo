@@ -1,14 +1,14 @@
 use aes::Aes128;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Ecb};
-use chrono::{Datelike, FixedOffset, Local, TimeZone, Timelike};
+use chrono::{DateTime, Datelike, FixedOffset, Local, TimeZone, Timelike};
 use hex;
 use md5;
 use memmap2::MmapMut;
 use std::fs::{self, File, OpenOptions};
 use std::io;
-use std::io::Write;
 use std::io::{BufWriter, Read};
+use std::io::{Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -58,6 +58,8 @@ pub struct MmapWriter {
 const BUFFER_SIZE: usize = 128 * 1024; // 128 KB , 每次扩展的 buffer 大小
 const FLUSH_SIZE_THRESHOLD: usize = 16 * 1024; // KB
 const FLUSH_TIME_THRESHOLD: u64 = 5; // seconds
+
+const CHUNK_SIZE: usize = 64 * 1024; // 64KB
 
 impl MmapWriter {
     pub fn new(app_key: &str, base_dir: PathBuf, is_encrypt: bool) -> Self {
@@ -123,39 +125,98 @@ impl MmapWriter {
         let tz = FixedOffset::east_opt(8 * 3600).unwrap();
         let start = tz.timestamp_millis_opt(start_ms).unwrap();
         let end = tz.timestamp_millis_opt(end_ms).unwrap();
-        let mut out = BufWriter::new(File::create(output)?);
+
+        let mut out_buf = BufWriter::new(File::create(output)?);
 
         let mut current = start;
         while current <= end {
-            let y = current.year();
-            let m = current.month();
-            let d = current.day();
-            let h = current.hour();
-            let dir = self.base_dir.join(format!("{:04}{:02}{:02}", y, m, d));
-            let encrypt_str = if self.is_encrypt { "encrypt" } else { "plain" };
-            let filename = format!("{:04}{:02}{:02}_{:02}_{}.log", y, m, d, h, encrypt_str);
-            let filepath = dir.join(&filename);
-
-            if let Ok(data) = fs::read(filepath) {
-                for bytes in data.split(|&b| b == b'\n') {
-                    if bytes.is_empty() {
-                        continue;
-                    }
-                    let msg = if self.is_encrypt {
-                        let encrypted_text =
-                            String::from_utf8(bytes.to_vec()).unwrap_or("".to_string());
-                        decrypt_line(&self.app_key, encrypted_text.as_str())
-                            .unwrap_or("".to_string())
-                    } else {
-                        String::from_utf8(bytes.to_vec()).unwrap_or("".to_string())
-                    };
-                    writeln!(out, "{}", msg)?;
-                }
-            }
+            self.export_log_by_file(&current, &mut out_buf)?;
             current = current + chrono::Duration::hours(1);
+        }
+        Ok(())
+    }
+
+    fn export_log_by_file(
+        &self,
+        current: &DateTime<FixedOffset>,
+        out_buf: &mut BufWriter<File>,
+    ) -> io::Result<()> {
+        let y = current.year();
+        let m = current.month();
+        let d = current.day();
+        let h = current.hour();
+        let dir = self.base_dir.join(format!("{:04}{:02}{:02}", y, m, d));
+        let encrypt_str = if self.is_encrypt { "encrypt" } else { "plain" };
+        let filename = format!("{:04}{:02}{:02}_{:02}_{}.log", y, m, d, h, encrypt_str);
+        let filepath = dir.join(&filename);
+        if !filepath.exists() {
+            return Ok(());
+        }
+
+        let total_length = Self::get_file_size(&filepath)?;
+
+        let mut src_file = File::open(&filepath)?;
+        let mut buffer = vec![0u8; total_length as usize];
+        src_file.read_exact(&mut buffer)?;
+
+        for bytes in buffer.split(|&b| b == b'\n') {
+            if bytes.is_empty() {
+                continue;
+            }
+            let msg = if self.is_encrypt {
+                let encrypted_text = String::from_utf8(bytes.to_vec()).unwrap_or("".to_string());
+                decrypt_line(&self.app_key, encrypted_text.as_str()).unwrap_or("".to_string())
+            } else {
+                String::from_utf8(bytes.to_vec()).unwrap_or("".to_string())
+            };
+            writeln!(out_buf, "{}", msg)?;
         }
 
         Ok(())
+    }
+
+    // mmap 为填充完成，会拼接 0x00 ，把日志导出来的时候，需要把文末的 0x00 都去掉
+    // 文件每 64 KB 倒查 0x00 的位置
+    fn get_file_size(path: &PathBuf) -> io::Result<u64> {
+        let mut file = OpenOptions::new().read(true).open(path)?;
+        let file_size = file.metadata()?.len();
+
+        if file_size == 0 {
+            return Ok(file_size);
+        }
+
+        let mut pos = file_size;
+        let mut buffer = vec![0u8; CHUNK_SIZE];
+
+        // 记录最后一个非 0x00 字节的绝对位置
+        let mut last_non_zero_pos = None;
+
+        while pos > 0 {
+            // 计算本次读取的实际大小
+            let read_size = if pos >= CHUNK_SIZE as u64 {
+                CHUNK_SIZE as u64
+            } else {
+                pos
+            };
+
+            // 移动文件指针到当前块起始位置
+            file.seek(SeekFrom::Start(pos - read_size))?;
+
+            // 读取数据
+            file.read_exact(&mut buffer[..read_size as usize])?;
+
+            // 从块尾部向前查找非 0x00
+            if let Some(i) = buffer[..read_size as usize].iter().rposition(|&b| b != 0) {
+                last_non_zero_pos = Some(pos - read_size + i as u64 + 1);
+                break;
+            }
+
+            pos -= read_size;
+        }
+
+        // 需要截断文件位置
+        let new_len = last_non_zero_pos.unwrap_or(file_size);
+        Ok(new_len)
     }
 }
 
@@ -194,6 +255,7 @@ impl MmapWriter {
         // 获取当前 mmap
         let mmap = self.current_mmap.as_mut().unwrap();
 
+        // let pos = Self::get_file_size(&log_path)?; todo
         // 查找可用空间
         let pos = mmap.iter().position(|&b| b == 0).unwrap_or(mmap.len());
 

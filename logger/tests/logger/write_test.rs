@@ -6,7 +6,7 @@ pub mod write_test {
     use std::time::Instant;
 
     #[test]
-    fn test_write_log() {
+    fn test_write_plain_log() {
         let count = 1 * 10000;
         let length = 100;
         let app_key = "12345";
@@ -24,7 +24,7 @@ pub mod write_test {
         // 计算总耗时
         let duration = start.elapsed();
         println!(
-            "Total time: {} ms，is_encrypt {}",
+            "write_log Total time: {} ms，is_encrypt {}",
             duration.as_millis(),
             is_encrypt
         );
@@ -49,7 +49,7 @@ pub mod write_test {
         // 计算总耗时
         let duration = start.elapsed();
         println!(
-            "Total time: {} ms，is_encrypt {}",
+            "write_encrypt_log Total time: {} ms，is_encrypt {}",
             duration.as_millis(),
             is_encrypt
         );
