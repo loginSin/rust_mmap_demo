@@ -27,3 +27,20 @@ cargo llvm-cov --package logger --html --output-dir target/llvm-cov-logger -- --
 ```shell
 open target/llvm-cov-logger/html/index.html
 ```
+
+## 查看圈复杂度
+
+> 安装
+```shell
+pip install lizard
+```
+
+> 检测圈复杂度
+```shell
+lizard -l rust logger/ -x"logger/tests/*" --html > ./target/lizard_logger.html
+```
+
+> 查看
+```shell
+open ./target/lizard_logger.html
+```
