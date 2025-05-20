@@ -1,48 +1,16 @@
+use crate::encrypt_util::{decrypt_line, encrypt_line};
 use crate::mmap_config::MmapConfig;
-use aes::Aes128;
-use block_modes::block_padding::Pkcs7;
-use block_modes::{BlockMode, Ecb};
+use block_modes::BlockMode;
 use chrono::{DateTime, Datelike, FixedOffset, Local, TimeZone, Timelike};
 use hex;
 use md5;
 use memmap2::MmapMut;
 use std::fs::{self, File, OpenOptions};
 use std::io;
+use std::io::Write;
 use std::io::{BufWriter, Read};
-use std::io::{Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
-
-// 定义类型
-type Aes128Ecb = Ecb<Aes128, Pkcs7>;
-
-// 生成 128 位密钥
-fn generate_key(app_key: &str) -> [u8; 16] {
-    let digest = md5::compute(app_key);
-    let mut key = [0u8; 16];
-    key.copy_from_slice(&digest[..16]);
-    key
-}
-
-// 加密一行日志
-pub fn encrypt_line(app_key: &str, plain: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let key = generate_key(app_key);
-    let cipher = Aes128Ecb::new_from_slices(&key, &[])?;
-    let encrypted = cipher.encrypt_vec(plain.as_bytes());
-    Ok(hex::encode(encrypted)) // 将二进制加密数据转为十六进制写入
-}
-
-// 解密一行日志
-pub fn decrypt_line(
-    app_key: &str,
-    encrypted_hex: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let key = generate_key(app_key);
-    let cipher = Aes128Ecb::new_from_slices(&key, &[])?;
-    let encrypted = hex::decode(encrypted_hex)?;
-    let decrypted = cipher.decrypt_vec(&encrypted)?;
-    Ok(String::from_utf8(decrypted)?)
-}
 
 pub struct MmapWriter {
     base_dir: PathBuf,
@@ -54,8 +22,6 @@ pub struct MmapWriter {
     last_flush_time: Instant,      // 上次刷新时间
     flush_interval: Duration,      // 刷新间隔
 }
-
-const CHUNK_SIZE: usize = 64 * 1024; // 64KB // todo 优化
 
 impl MmapWriter {
     pub fn new(base_dir: &PathBuf, config: MmapConfig) -> Self {
@@ -154,7 +120,7 @@ impl MmapWriter {
             return Ok(());
         }
 
-        let total_length = Self::get_file_size(&filepath)?;
+        let total_length = Self::get_first_zero_pos(&filepath)?;
 
         let mut src_file = File::open(&filepath)?;
         let mut buffer = vec![0u8; total_length as usize];
@@ -178,47 +144,19 @@ impl MmapWriter {
     }
 
     // mmap 为填充完成，会拼接 0x00 ，把日志导出来的时候，需要把文末的 0x00 都去掉
-    // 文件每 64 KB 倒查 0x00 的位置
-    fn get_file_size(path: &PathBuf) -> io::Result<u64> {
+    // 倒查 0x00 第一个位置
+    fn get_first_zero_pos(path: &PathBuf) -> io::Result<u64> {
         let mut file = OpenOptions::new().read(true).open(path)?;
-        let file_size = file.metadata()?.len();
+        let mut total_length = file.metadata()?.len();
 
-        if file_size == 0 {
-            return Ok(file_size);
+        let mut buffer = vec![0u8; total_length as usize];
+        file.read_exact(&mut buffer)?;
+
+        let mut pos = total_length as usize;
+        while pos > 0 && buffer[pos - 1] == 0 {
+            pos -= 1;
         }
-
-        let mut pos = file_size;
-        let mut buffer = vec![0u8; CHUNK_SIZE];
-
-        // 记录最后一个非 0x00 字节的绝对位置
-        let mut last_non_zero_pos = None;
-
-        while pos > 0 {
-            // 计算本次读取的实际大小
-            let read_size = if pos >= CHUNK_SIZE as u64 {
-                CHUNK_SIZE as u64
-            } else {
-                pos
-            };
-
-            // 移动文件指针到当前块起始位置
-            file.seek(SeekFrom::Start(pos - read_size))?;
-
-            // 读取数据
-            file.read_exact(&mut buffer[..read_size as usize])?;
-
-            // 从块尾部向前查找非 0x00
-            if let Some(i) = buffer[..read_size as usize].iter().rposition(|&b| b != 0) {
-                last_non_zero_pos = Some(pos - read_size + i as u64 + 1);
-                break;
-            }
-
-            pos -= read_size;
-        }
-
-        // 需要截断文件位置
-        let new_len = last_non_zero_pos.unwrap_or(file_size);
-        Ok(new_len)
+        Ok(pos as u64)
     }
 }
 

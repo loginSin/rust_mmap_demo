@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod encrypt_test {
-    use logger::mmap_writer::{decrypt_line, encrypt_line};
+    use logger::encrypt_util::{decrypt_line, encrypt_line};
 
     #[test]
     pub fn test_alphabet_number() {
