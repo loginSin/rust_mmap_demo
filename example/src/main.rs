@@ -1,16 +1,14 @@
-use crate::logger::Logger;
 use chrono::{FixedOffset, NaiveDateTime, TimeZone};
+use logger::logger::Logger;
 use rand::seq::IndexedRandom;
 use std::fs::remove_dir_all;
 use std::path::PathBuf;
 use std::time::Instant;
 
-mod logger;
-
 fn main() {
     let _ = remove_dir_all("./target/tmp_log");
     let count = 1 * 10000;
-    let length = 1000;
+    let length = 100;
     // write_log(count, length);
     // write_encrypt_log(count, length);
     write_all_log(count, length);
