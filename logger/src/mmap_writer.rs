@@ -55,23 +55,21 @@ pub struct MmapWriter {
     flush_interval: Duration,      // 刷新间隔
 }
 
-const BUFFER_SIZE: usize = 128 * 1024; // 128 KB , 每次扩展的 buffer 大小
-const FLUSH_SIZE_THRESHOLD: usize = 16 * 1024; // KB
-const FLUSH_TIME_THRESHOLD: u64 = 5; // seconds
-
 const CHUNK_SIZE: usize = 64 * 1024; // 64KB // todo 优化
 
 impl MmapWriter {
     pub fn new(base_dir: &PathBuf, config: MmapConfig) -> Self {
+        let buf_size = config.get_buffer_size();
+        let flush_interval = config.get_flush_interval();
         Self {
             base_dir: base_dir.clone(),
             config,
             current_mmap: None,
             current_file: None,
-            buffer: Vec::with_capacity(BUFFER_SIZE), // 缓冲区
+            buffer: Vec::with_capacity(buf_size), // 缓冲区
             buffer_size: 0,
             last_flush_time: Instant::now(),
-            flush_interval: Duration::from_secs(FLUSH_TIME_THRESHOLD), // 刷新间隔
+            flush_interval: Duration::from_secs(flush_interval as u64), // 刷新间隔
         }
     }
 
@@ -97,9 +95,9 @@ impl MmapWriter {
         self.buffer_size += data.len();
 
         // 检查是否需要刷新：
-        // 1. 缓冲区超过 FLUSH_SIZE_THRESHOLD KB
-        // 2. 距离上次刷新超过 FLUSH_TIME_THRESHOLD 秒
-        if self.buffer_size >= FLUSH_SIZE_THRESHOLD
+        // 1. 缓冲区超过 flush_size KB
+        // 2. 距离上次刷新超过 flush_interval 秒
+        if self.buffer_size >= self.config.get_flush_size()
             || self.last_flush_time.elapsed() >= self.flush_interval
         {
             self.flush()?;
@@ -236,7 +234,7 @@ impl MmapWriter {
 
         // 每次给文件扩展 BUFFER_SIZE 大小，确保文件足够大
         let file_size = file.metadata()?.len();
-        file.set_len(file_size + BUFFER_SIZE as u64)?;
+        file.set_len(file_size + self.config.get_buffer_size() as u64)?;
 
         // 创建内存映射
         let mmap = unsafe { MmapMut::map_mut(&file)? };
