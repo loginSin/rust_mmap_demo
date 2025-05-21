@@ -2,5 +2,6 @@
 members = [
     "logger",
     "example",
+    "decrypt_log",
 ]
 resolver = "2"

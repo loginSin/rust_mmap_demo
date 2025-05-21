@@ -5,5 +5,5 @@ mod write_test;
 // todo 测试日志写入跨小时
 // todo 测试日志读取跨小时
 // todo bench 跑性能测试
-// todo 更新 README，详细讲述
+// todo 更新 README，详细讲述设计思路和实现逻辑，加解密工具
 // todo 尝试集成 github ci
