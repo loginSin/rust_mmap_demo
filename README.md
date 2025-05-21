@@ -44,3 +44,45 @@ lizard -l rust logger/ -x"logger/tests/*" --html > ./target/lizard_logger.html
 ```shell
 open ./target/lizard_logger.html
 ```
+
+# 解密工具
+
+## 日志加密
+
+```rust
+fn main() {
+    /// 秘钥
+    let app_key = "testAppKey";
+    /// 加密
+    let is_encrypt = true;
+    /// 日志路径
+    let base_dir = PathBuf::from("./target/tmp_log/");
+    /// 配置
+    let config = MmapConfig::new(app_key, is_encrypt);
+    /// 创建
+    let mut encrypt_writer = MmapWriter::new(&base_dir, config);
+}
+```
+
+## 日志解密
+
+> 编译解密工具
+```shell
+cargo build -p decrypt_log --release
+```
+
+> 执行解密
+```shell
+./target/release/decrypt_log --app-key "testAppKey" --input "./target/tmp_log"
+```
+
+# TODO
+```text
+// todo 测试多线程
+// todo 测试日志写入跨小时
+// todo 测试日志读取跨小时
+// todo bench 跑性能测试
+// todo 更新 README，详细讲述设计思路和实现逻辑
+// todo 尝试集成 github ci
+// todo 删除超过 7 天的日志
+```
