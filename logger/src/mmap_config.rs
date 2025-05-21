@@ -9,6 +9,8 @@ pub struct MmapConfig {
     flush_size: usize,
     /// 刷新间隔，单位秒，最多该时间段内强制写入，默认 5 秒
     flush_interval: usize,
+    /// 日志过期天数，超过该天数的日志将被删除，默认 7 天
+    expiration_days: usize,
 }
 
 impl MmapConfig {
@@ -19,6 +21,7 @@ impl MmapConfig {
             buffer_size: 128 * 1024,
             flush_size: 16 * 1024,
             flush_interval: 5,
+            expiration_days: 7,
         }
     }
 
@@ -75,6 +78,18 @@ impl MmapConfig {
     pub fn set_flush_interval(&mut self, flush_interval: usize) {
         if flush_interval > 0 {
             self.flush_interval = flush_interval;
+        }
+    }
+
+    /// 获取 `expiration_days`
+    pub fn get_expiration_days(&self) -> usize {
+        self.expiration_days
+    }
+
+    /// 设置 `expiration_days`，必须 > 0，否则不生效，将会使用默认值
+    pub fn set_expiration_days(&mut self, expiration_days: usize) {
+        if expiration_days > 0 {
+            self.expiration_days = expiration_days;
         }
     }
 }

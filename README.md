@@ -84,5 +84,4 @@ cargo build -p decrypt_log --release
 // todo bench 跑性能测试
 // todo 更新 README，详细讲述设计思路和实现逻辑
 // todo 尝试集成 github ci
-// todo 删除超过 7 天的日志
 ```

@@ -12,7 +12,7 @@ pub mod write_test {
         let app_key = "12345";
         let is_encrypt = false;
         let base_dir = PathBuf::from("../target/tmp_log");
-        let base_test = BaseTest::new(app_key, base_dir, is_encrypt, true);
+        let base_test = BaseTest::new(app_key, &base_dir, is_encrypt, true);
 
         let rc_writer = base_test.get_mmap_writer();
         let mut writer = rc_writer.borrow_mut();
@@ -37,7 +37,7 @@ pub mod write_test {
         let app_key = "12345";
         let is_encrypt = true;
         let base_dir = PathBuf::from("../target/tmp_log");
-        let base_test = BaseTest::new(app_key, base_dir, is_encrypt, true);
+        let base_test = BaseTest::new(app_key, &base_dir, is_encrypt, true);
 
         let rc_writer = base_test.get_mmap_writer();
         let mut writer = rc_writer.borrow_mut();

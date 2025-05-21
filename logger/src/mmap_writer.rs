@@ -1,7 +1,7 @@
 use crate::encrypt_util::{decrypt_line, encrypt_line};
 use crate::mmap_config::MmapConfig;
 use block_modes::BlockMode;
-use chrono::{DateTime, Datelike, FixedOffset, Local, TimeZone, Timelike};
+use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDate, TimeZone, Timelike};
 use hex;
 use md5;
 use memmap2::MmapMut;
@@ -24,10 +24,12 @@ pub struct MmapWriter {
 }
 
 impl MmapWriter {
-    pub fn new(base_dir: &PathBuf, config: MmapConfig) -> Self {
+    pub fn try_new(base_dir: &PathBuf, config: MmapConfig) -> io::Result<Self> {
+        delete_expired_directories(base_dir, config.get_expiration_days())?;
         let buf_size = config.get_buffer_size();
         let flush_interval = config.get_flush_interval();
-        Self {
+
+        let writer = MmapWriter {
             base_dir: base_dir.clone(),
             config,
             current_mmap: None,
@@ -36,7 +38,8 @@ impl MmapWriter {
             buffer_size: 0,
             last_flush_time: Instant::now(),
             flush_interval: Duration::from_secs(flush_interval as u64), // 刷新间隔
-        }
+        };
+        Ok(writer)
     }
 
     // 写入日志
@@ -258,4 +261,43 @@ impl MmapWriter {
             year, month, day, hour, encrypt_str
         )))
     }
+}
+
+/// 删除 base_dir 下超过 7 天的子目录（目录名格式为 yyyymmdd）
+pub fn delete_expired_directories(
+    base_dir: &PathBuf,
+    expiration_days: usize,
+) -> Result<(), io::Error> {
+    if !base_dir.exists() {
+        return Ok(());
+    }
+    for entry in fs::read_dir(base_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if !path.is_dir() {
+            continue;
+        }
+
+        if let Some(name) = path.file_name().and_then(|os| os.to_str()) {
+            if let Ok(date) = NaiveDate::parse_from_str(name, "%Y%m%d") {
+                // 设置时间为北京时间当天的 00:00:00
+                let dir_datetime = DateTime::<FixedOffset>::from_naive_utc_and_offset(
+                    date.and_hms_opt(0, 0, 0).unwrap(),
+                    FixedOffset::east_opt(8 * 3600).unwrap(), // 北京时间 UTC+8
+                );
+
+                // 获取当前时间，并转换为北京时间
+                let now = Local::now().with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap());
+                let seven_days_ago = now - chrono::Duration::days(expiration_days as i64);
+
+                if dir_datetime < seven_days_ago {
+                    println!("删除过期目录: {:?}", path);
+                    fs::remove_dir_all(&path)?;
+                }
+            }
+        }
+    }
+
+    Ok(())
 }

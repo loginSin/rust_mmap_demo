@@ -32,7 +32,7 @@ fn export_encrypt_log() {
     let is_encrypt = true;
     let base_dir = PathBuf::from("./target/tmp_log/");
     let config = MmapConfig::new(app_key, is_encrypt);
-    let mut encrypt_writer = MmapWriter::new(&base_dir, config);
+    let mut encrypt_writer = MmapWriter::try_new(&base_dir, config).unwrap();
     // 添加计时开始点
     let start = Instant::now();
     let output = PathBuf::from("./target/tmp_log/encrypt_log.log");
@@ -54,7 +54,7 @@ fn export_log() {
     let is_encrypt = false;
     let base_dir = PathBuf::from("./target/tmp_log/");
     let config = MmapConfig::new(app_key, is_encrypt);
-    let mut encrypt_writer = MmapWriter::new(&base_dir, config);
+    let mut encrypt_writer = MmapWriter::try_new(&base_dir, config).unwrap();
     // 添加计时开始点
     let start = Instant::now();
     let output = PathBuf::from("./target/tmp_log/plain_log.log");
@@ -72,9 +72,9 @@ fn write_all_log(count: i32, length: i32) {
     let app_key = "testAppKey";
     let base_dir = PathBuf::from("./target/tmp_log/");
     let config0 = MmapConfig::new(app_key, false);
-    let mut writer = MmapWriter::new(&base_dir, config0);
+    let mut writer = MmapWriter::try_new(&base_dir, config0).unwrap();
     let config1 = MmapConfig::new(app_key, true);
-    let mut encrypt_writer = MmapWriter::new(&base_dir, config1);
+    let mut encrypt_writer = MmapWriter::try_new(&base_dir, config1).unwrap();
     // 添加计时开始点
     let start = Instant::now();
     for _ in 0..1 * count {
@@ -93,7 +93,7 @@ fn write_encrypt_log(count: i32, length: i32) {
     let is_encrypt = true;
     let base_dir = PathBuf::from("./target/tmp_log/");
     let config = MmapConfig::new(app_key, is_encrypt);
-    let mut writer = MmapWriter::new(&base_dir, config);
+    let mut writer = MmapWriter::try_new(&base_dir, config).unwrap();
     // 添加计时开始点
     let start = Instant::now();
     for _ in 0..1 * count {
@@ -114,7 +114,7 @@ fn write_log(count: i32, length: i32) {
     let is_encrypt = false;
     let base_dir = PathBuf::from("./target/tmp_log/");
     let config = MmapConfig::new(app_key, is_encrypt);
-    let mut writer = MmapWriter::new(&base_dir, config);
+    let mut writer = MmapWriter::try_new(&base_dir, config).unwrap();
     // 添加计时开始点
     let start = Instant::now();
     for _ in 0..1 * count {

@@ -13,6 +13,7 @@ pub mod config_test {
         assert_eq!(128 * 1024, conf.get_buffer_size());
         assert_eq!(16 * 1024, conf.get_flush_size());
         assert_eq!(5, conf.get_flush_interval());
+        assert_eq!(7, conf.get_expiration_days());
     }
 
     #[test]
@@ -143,5 +144,26 @@ pub mod config_test {
         let flush_interval = usize::MAX;
         conf.set_flush_interval(flush_interval);
         assert_eq!(flush_interval, conf.get_flush_interval());
+    }
+
+    #[test]
+    fn test_expiration_days() {
+        let app_key = "123321";
+        let is_encrypt = true;
+        let mut conf = MmapConfig::new(app_key, is_encrypt);
+
+        assert_eq!(7, conf.get_expiration_days());
+
+        let expiration_days = 0;
+        conf.set_expiration_days(expiration_days);
+        assert_eq!(7, conf.get_expiration_days());
+
+        let expiration_days = 1;
+        conf.set_expiration_days(expiration_days);
+        assert_eq!(expiration_days, conf.get_expiration_days());
+
+        let expiration_days = 999;
+        conf.set_expiration_days(expiration_days);
+        assert_eq!(expiration_days, conf.get_expiration_days());
     }
 }

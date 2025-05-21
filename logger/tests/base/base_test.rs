@@ -10,10 +10,10 @@ pub struct BaseTest {
 }
 
 impl BaseTest {
-    pub fn new(app_key: &str, base_dir: PathBuf, is_encrypt: bool, clean: bool) -> Self {
+    pub fn new(app_key: &str, base_dir: &PathBuf, is_encrypt: bool, clean: bool) -> Self {
         Self::clean_old_file(base_dir.clone(), clean);
         let config = MmapConfig::new(app_key, is_encrypt);
-        let mmap_writer = MmapWriter::new(&base_dir, config);
+        let mmap_writer = MmapWriter::try_new(&base_dir, config).unwrap();
         Self {
             mmap_writer: Arc::new(RefCell::new(mmap_writer)),
         }
