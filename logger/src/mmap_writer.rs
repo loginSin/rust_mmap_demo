@@ -1,7 +1,9 @@
 use crate::encrypt_util::{decrypt_line, encrypt_line};
 use crate::mmap_config::MmapConfig;
 use block_modes::BlockMode;
-use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDate, TimeZone, Timelike};
+use chrono::{DateTime, Datelike, LocalResult, NaiveDate, TimeZone, Timelike, Utc};
+use chrono_tz::Asia::Shanghai;
+use chrono_tz::Tz;
 use hex;
 use md5;
 use memmap2::MmapMut;
@@ -88,9 +90,19 @@ impl MmapWriter {
 
     /// 将指定时间范围的日志导出日志到指定路径
     pub fn export_logs(&self, start_ms: i64, end_ms: i64, output: &PathBuf) -> io::Result<()> {
-        let tz = FixedOffset::east_opt(8 * 3600).unwrap();
-        let start = tz.timestamp_millis_opt(start_ms).unwrap();
-        let end = tz.timestamp_millis_opt(end_ms).unwrap();
+        // 将毫秒时间戳转为 UTC 时间
+        let start_utc = Utc.timestamp_millis_opt(start_ms).single().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, "Invalid start timestamp")
+        })?;
+
+        let end_utc = Utc
+            .timestamp_millis_opt(end_ms)
+            .single()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid end timestamp"))?;
+
+        // 转换为北京时间
+        let start: DateTime<Tz> = start_utc.with_timezone(&Shanghai);
+        let end: DateTime<Tz> = end_utc.with_timezone(&Shanghai);
 
         let mut out_buf = BufWriter::new(File::create(output)?);
 
@@ -104,7 +116,7 @@ impl MmapWriter {
 
     fn export_log_by_file(
         &self,
-        current: &DateTime<FixedOffset>,
+        current: &DateTime<Tz>,
         out_buf: &mut BufWriter<File>,
     ) -> io::Result<()> {
         let y = current.year();
@@ -230,7 +242,7 @@ impl MmapWriter {
 impl MmapWriter {
     // 获取当前时间的年月日小时格式
     fn current_time(&self) -> (i32, u32, u32, u32) {
-        let now = Local::now().with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap());
+        let now = Utc::now().with_timezone(&Shanghai);
         (now.year(), now.month(), now.day(), now.hour())
     }
 
@@ -281,19 +293,17 @@ pub fn delete_expired_directories(
 
         if let Some(name) = path.file_name().and_then(|os| os.to_str()) {
             if let Ok(date) = NaiveDate::parse_from_str(name, "%Y%m%d") {
-                // 设置时间为北京时间当天的 00:00:00
-                let dir_datetime = DateTime::<FixedOffset>::from_naive_utc_and_offset(
-                    date.and_hms_opt(0, 0, 0).unwrap(),
-                    FixedOffset::east_opt(8 * 3600).unwrap(), // 北京时间 UTC+8
-                );
+                // 直接构造北京时间当天的 00:00:00
+                if let LocalResult::Single(dir_datetime) =
+                    Shanghai.with_ymd_and_hms(date.year(), date.month(), date.day(), 0, 0, 0)
+                {
+                    let now = Utc::now().with_timezone(&Shanghai);
+                    let seven_days_ago = now - chrono::Duration::days(expiration_days as i64);
 
-                // 获取当前时间，并转换为北京时间
-                let now = Local::now().with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap());
-                let seven_days_ago = now - chrono::Duration::days(expiration_days as i64);
-
-                if dir_datetime < seven_days_ago {
-                    println!("删除过期目录: {:?}", path);
-                    fs::remove_dir_all(&path)?;
+                    if dir_datetime < seven_days_ago {
+                        println!("删除过期目录: {:?}", path);
+                        fs::remove_dir_all(&path)?;
+                    }
                 }
             }
         }

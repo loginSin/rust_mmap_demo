@@ -6,11 +6,13 @@ edition = "2021"
 [dependencies]
 memmap2 = "0.9.5"
 chrono = "0.4.38"
+chrono-tz = "0.8.6"
 md5 = "0.7.0"
 aes = "0.7.5"
 block-modes = "0.8.1"
 hex = "0.4.3"
 
 [dev-dependencies]
-chrono = "0.4.38"
 rand = "0.9.1"
+chrono = "0.4.38"
+chrono-tz = "0.8.6"
