@@ -18,8 +18,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: Check Code
       run: |
-        cargo fmt --check
         bash check_unsafe.sh
+        cargo fmt --check
 
     - name: Build
       run: |
