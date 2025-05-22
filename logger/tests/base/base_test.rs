@@ -1,7 +1,7 @@
 use logger::mmap_config::MmapConfig;
 use logger::mmap_writer::MmapWriter;
 use std::cell::RefCell;
-use std::fs::remove_dir_all;
+use std::fs::{remove_dir_all, File};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -28,4 +28,26 @@ impl BaseTest {
             let _ = remove_dir_all(base_dir);
         }
     }
+}
+
+pub fn create_subdir_and_file(
+    base_dir: &PathBuf,
+    subdir_name: &str,
+    file_name: &str,
+) -> std::io::Result<()> {
+    // 1. 创建子目录路径
+    let sub_dir_path = base_dir.join(subdir_name);
+
+    // 2. 创建子目录（如果不存在）
+    if !sub_dir_path.exists() {
+        std::fs::create_dir_all(&sub_dir_path)?;
+    }
+
+    // 3. 创建文件路径
+    let file_path = sub_dir_path.join(file_name);
+
+    // 4. 创建空白文件（如果已存在则会覆盖）
+    File::create(file_path)?;
+
+    Ok(())
 }

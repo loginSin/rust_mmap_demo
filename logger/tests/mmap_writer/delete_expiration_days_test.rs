@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod delete_expiration_days_test {
-    use crate::base::base_test::BaseTest;
+    use crate::base::base_test::{create_subdir_and_file, BaseTest};
     use chrono::{Datelike, FixedOffset, Local, Timelike};
     use logger::mmap_writer::delete_expired_directories;
     use std::fs;
@@ -61,27 +61,5 @@ pub mod delete_expiration_days_test {
     fn current_time() -> (i32, u32, u32, u32) {
         let now = Local::now().with_timezone(&FixedOffset::east_opt(8 * 3600).unwrap());
         (now.year(), now.month(), now.day(), now.hour())
-    }
-
-    fn create_subdir_and_file(
-        base_dir: &PathBuf,
-        subdir_name: &str,
-        file_name: &str,
-    ) -> std::io::Result<()> {
-        // 1. 创建子目录路径
-        let sub_dir_path = base_dir.join(subdir_name);
-
-        // 2. 创建子目录（如果不存在）
-        if !sub_dir_path.exists() {
-            std::fs::create_dir_all(&sub_dir_path)?;
-        }
-
-        // 3. 创建文件路径
-        let file_path = sub_dir_path.join(file_name);
-
-        // 4. 创建空白文件（如果已存在则会覆盖）
-        File::create(file_path)?;
-
-        Ok(())
     }
 }
