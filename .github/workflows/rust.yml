@@ -23,5 +23,7 @@ jobs:
     - name: Run tests
       run: | 
         cargo test -- --test-threads=1
+        ls -la
+        chmod +x check_unsafe.sh
         bash check_unsafe.sh
         cargo fmt --check
