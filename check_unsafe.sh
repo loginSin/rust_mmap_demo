@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 # 指定要扫描的目录（可通过环境变量传入，默认为当前目录）
 TARGET_DIR="logger/src"
