@@ -208,7 +208,9 @@ impl MmapWriter {
         }
 
         // 获取当前 mmap
-        let mmap = self.current_mmap.as_mut().unwrap();
+        let mmap = self.current_mmap.as_mut().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, "Can't flush to disk by mmap")
+        })?;
 
         // warning：mmap 申请空间会扩容，且全部填充 0，所以拼接数据的时候，需要找到第一 0 的位置
 
