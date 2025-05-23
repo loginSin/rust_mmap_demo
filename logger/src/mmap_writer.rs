@@ -1,11 +1,8 @@
 use crate::encrypt_util::{decrypt_line, encrypt_line};
 use crate::mmap_config::MmapConfig;
-use block_modes::BlockMode;
 use chrono::{DateTime, Datelike, LocalResult, NaiveDate, TimeZone, Timelike, Utc};
 use chrono_tz::Asia::Shanghai;
 use chrono_tz::Tz;
-use hex;
-use md5;
 use memmap2::MmapMut;
 use std::fs::{self, File, OpenOptions};
 use std::io;
@@ -162,7 +159,7 @@ impl MmapWriter {
     // 倒查 0x00 第一个位置
     fn get_first_zero_pos(path: &PathBuf) -> io::Result<u64> {
         let mut file = OpenOptions::new().read(true).open(path)?;
-        let mut total_length = file.metadata()?.len();
+        let total_length = file.metadata()?.len();
 
         let mut buffer = vec![0u8; total_length as usize];
         file.read_exact(&mut buffer)?;

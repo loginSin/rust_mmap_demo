@@ -80,8 +80,6 @@ cargo build -p decrypt_log --release
 ```text
 // todo 测试多线程
 // todo 测试日志写入跨小时
-// todo 测试日志读取跨天跨小时
 // todo bench 跑性能测试
 // todo 更新 README，详细讲述设计思路和实现逻辑
-// todo 消除 unwrap()
 ```
