@@ -16,15 +16,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Check Code
-      run: |
-        bash check_unsafe.sh
-        cargo fmt --check
-
     - name: Build
       run: |
+        cargo build -p logger
         cargo build -p decrypt_log
         cargo build -p mmap_demo
+        bash check_unsafe.sh
+        cargo fmt --check
         
     - name: Run tests
       run: | 
