@@ -38,6 +38,13 @@ fn create_build_info() {
         build_time
     ));
 
+    // 获取构建目标 triple，例如 aarch64-apple-ios
+    let target = env::var("TARGET").unwrap_or_else(|_| "unknown".to_string());
+    write_line(&format!(
+        "pub const RUST_SDK_TARGET: &str = \"{}\";",
+        target
+    ));
+
     // 编译信息
     // 把编译信息写入 sdk，可以通过命令行直接查看 sdk 信息
     /// ```
@@ -49,10 +56,11 @@ fn create_build_info() {
     /// {"my_version":"0.1.0","my_commit":"9c13add","my_build_time":"2025-05-27T14:59:22.667099+08:00"}
     /// ```
     let json_info = format!(
-        r#"{{"my_version":"{version}","my_commit":"{commit}","my_build_time":"{time}"}}"#,
+        r#"{{"my_version":"{version}","my_commit":"{commit}","my_build_time":"{time}","my_target":"{target}"}}"#,
         version = version,
         commit = git_commit,
         time = build_time,
+        target = target,
     );
 
     write_line("#[used]");
