@@ -12,7 +12,7 @@ fn create_build_info() {
     // 每次构建都触发
     println!("cargo:rerun-if-changed=src/build_info.rs");
 
-    let dest_path = Path::new("src").join("build_info.rs");
+    let dest_path = Path::new("src/build_info.rs");
     let mut file = File::create(&dest_path).expect("Problem creating the build_info.rs");
     let version = env::var("CARGO_PKG_VERSION").unwrap();
 
@@ -68,7 +68,7 @@ fn create_build_info() {
 
     write_line("#[used]");
     write_line(&format!(
-        "static RUST_SDK_BUILD_INFO: &str = r#\"{}\"#;",
+        "pub static RUST_SDK_BUILD_INFO: &str = r#\"{}\"#;",
         json_info
     ));
 }
